@@ -41,9 +41,7 @@ def refresh_database(options):
 	if options.installremote:
 		cmd = ['ssh', options.remoteuser+'@'+options.remoteserver] + cmd
 	
-	print cmd
 	try:
 		ret = subprocess.check_output(cmd)
-		print ret
 	except subprocess.CalledProcessError:
 		pass
