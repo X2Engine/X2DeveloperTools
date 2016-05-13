@@ -52,9 +52,9 @@ def install_gitdir(options):
 	"""
 	"""
 	assetscmd = subprocess.Popen(['find', options.gitdir+'/X2CRM/x2engine/assets', '-maxdepth', '1', 
-		'-name', "\'[^t]*\'"], stdout=subprocess.PIPE)
+		'-name', '[^t]*'], stdout=subprocess.PIPE)
 	tailcmd = subprocess.Popen(['tail', '-n', '+2'], stdin=assetscmd.stdout, stdout=subprocess.PIPE)
-	rmcmd = subprocess.check_call(['xargs', '-r', 'rm'], stdin=tailcmd.stdout)
+	rmcmd = subprocess.check_call(['xargs', '-r', 'rm', '-r'], stdin=tailcmd.stdout)
 	
 	print('deleting directory '+options.directory)
 	cmd = ['sudo', 'rsync', '-avc', '--delete', options.gitdir+'/', options.directory]
