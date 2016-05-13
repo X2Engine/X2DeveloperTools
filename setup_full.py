@@ -16,7 +16,7 @@ def main(args):
 		x2util.refresh_database(options)
 	
 	x2util.install_gitdir(options)
-	#x2util.prep_installation()
+	x2util.prep_installation(options)
 	#x2util.chset()
 	#x2util.initialize()
 

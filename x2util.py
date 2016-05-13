@@ -20,6 +20,7 @@ def parse_arguments():
 	parser.add_argument('-p', '--mysqlpass', default = os.environ["MYSQLPASS"], help = "Password corresponding to the provided MySQL user")
 	parser.add_argument('-m', '--database', default = os.environ["MYSQLDATABASE"], help = "Database name to use for installing X2CRM")
 	parser.add_argument('-r', '--refresh', type=int, default=1, help = 'Toggles refreshing the existing database')
+	parser.add_argument('-a', '--dummydata', type=int, default=1, help = 'Toggles including dummy data with the installation process')
 	parser.add_argument('-i', '--installremote', type=int, default=os.environ["INSTALLREMOTE"], help = "Toggles installation to a remote server")
 	parser.add_argument('-l', '--remoteuser', help = "Username to connect to the remote server with, only required with -i" )
 	parser.add_argument('-s', '--remoteserver', help = "Remote hostname to connect to, only required iwith -i")
@@ -72,4 +73,27 @@ def install_gitdir(options):
 		subprocess.check_call(cmd)
 
 
+def prep_installation(options):
+	"""
+	"""
+
+	sedstr = ';'.join([
+		"s/host = 'localhost/host = '127.0.0.1/",
+		"s/adminPassword = 'admin/adminPassword = '1/",
+		"s/db=''/db='"+options.database+"'/",
+		"s/user=''/user='"+options.mysqluser+"'/",
+		"s/pass=''/pass='"+options.mysqlpass+"'/",
+		"s/adminEmail = ''/adminEmail = '1\@1.com'/",
+		"s/dummyData = 0/dummyData = "+str(options.dummydata)+"/"
+	])
+
+
+	if options.installremote == 1:
+		basecmd = ['ssh', options.remoteuser+'@'+options.remoteserver]
+		sedstr = '"' + sedstr + '"'
+		filepath = options.remotewebroot+'/installConfig.php'
+	else:
+		basecmd = []
+		filepath = options.directory+'/X2CRM/x2engine/installConfig.php'
 	
+	subprocess.check_call(basecmd + ['sed', '-i', sedstr, filepath])
