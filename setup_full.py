@@ -15,7 +15,7 @@ def main(args):
 	if options.refresh == 1:
 		x2util.refresh_database(options)
 	
-	#x2util.install_gitdir()
+	x2util.install_gitdir(options)
 	#x2util.prep_installation()
 	#x2util.chset()
 	#x2util.initialize()
