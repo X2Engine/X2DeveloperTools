@@ -62,9 +62,12 @@ def install_gitdir(options):
 	subprocess.check_call(cmd)
 
 	if options.installremote != 1:
-		cmd = ['sudo', 'chown', '-R', '33', options.directory+'/*']
+		cmd = ['sudo', 'chown', '-R', '33', options.directory+'/X2CRM/x2engine/']
 		subprocess.check_call(cmd)
 	else:
+		cmd = ['ssh', options.remoteuser+'@'+options.remoteserver, 'sudo', 'chown', '-R', options.remoteuser+':'+options.remoteuser, options.remotewebroot+'/*']
+		subprocess.check_call(cmd)
+
 		cmd = ['rsync', '-avzcO', '--delete', options.directory+'/X2CRM/x2engine/', 
 			options.remoteuser+'@'+options.remoteserver+':'+options.remotewebroot]
 		subprocess.check_call(cmd)
@@ -97,3 +100,80 @@ def prep_installation(options):
 		filepath = options.directory+'/X2CRM/x2engine/installConfig.php'
 	
 	subprocess.check_call(basecmd + ['sed', '-i', sedstr, filepath])
+
+def chset(options, flags = {}):
+	"""
+	Flag values:
+	d - Debug mode
+	D - X2Dev mode
+	u - Unit testing
+	v - Pro/pla edition
+	t - Test Debug level
+	b - Partner branding
+	f - Load fixtures for tests
+	c - Load fixtures for class only
+	s - Skip all unit tests
+	"""
+	flag_data = {
+		'd': {
+			'sedstr' : "s/YII_DEBUG',[:space:]*[a-zA-Z]\+/YII_DEBUG',{value}/",
+			'file' : '/constants.php'
+		},
+		'D': {
+			'sedstr' : "s/X2_DEV_MODE',[:space:]*[a-zA-Z]\+/X2_DEV_MODE',{value}/",
+			'file' : '/constants.php'
+		},
+		'u': {
+			'sedstr' : "s/YII_UNIT_TESTING',[:space:]*[a-zA-Z]\+/YII_UNIT_TESTING',{value}/",
+			'file' : '/constants.php'
+		},
+		'v' : {
+			'sedstr' : "s/PRO_VERSION',[:space:]*[0-9]\+/PRO_VERSION',{value}/",
+			'file' : '/constants.php'
+		},
+		't' : {
+			'sedstr' : "s/X2_TEST_DEBUG_LEVEL',[:space:]*[0-9]\+/X2_TEST_DEBUG_LEVEL',{value}/",
+			'file' : '/protected/tests/testconstants.php'
+		},
+		'b' : {
+			'sedstr' : "s/BRANDING',[:space:]*[a-zA-Z]\+/BRANDING',{value}/",
+			'file' : '/protected/partner/branding_constants-custom.php'
+		},
+		'f' : {
+			'sedstr' : "s/LOAD_FIXTURES',[:space:]*[a-zA-Z]\+/LOAD_FIXTURES',{value}/",
+			'file' : '/protected/tests/testconstants.php'
+		},
+		'c' : {
+			'sedstr' : "s/LOAD_FIXTURES_FOR_CLASS_ONLY',[:space:]*[a-zA-Z]\+/LOAD_FIXTURES_FOR_CLASS_ONLY',{value}/",
+			'file' : '/protected/tests/testconstants.php'
+		},
+		's' : {
+			'sedstr' : "s/X2_SKIP_ALL_TESTS',[:space:]*[a-zA-Z]\+/X2_SKIP_ALL_TESTS',{value}/",
+			'file' : '/protected/tests/testconstants.php'
+		}
+	}
+	
+	if options.installremote == 1:
+		install_path = options.remotewebroot
+		base_cmd = ['ssh', options.remoteuser+'@'+options.remoteserver]
+	else:
+		install_path = options.directory+'/X2CRM/x2engine'
+		base_cmd = []
+	for flag in flags:
+		sedstr = flag_data[flag]['sedstr'].replace('{value}',str(flags[flag]))
+		file_path = install_path + flag_data[flag]['file']
+		cmd = base_cmd + ['sed', '-i', sedstr, file_path]
+		subprocess.check_call(cmd)
+
+def initialize(options):
+	"""
+	"""
+	if options.installremote == 1:
+		base_cmd = ['ssh', options.remoteuser+'@'+options.remoteserver]
+		file_path = options.remotewebroot
+	else:
+		base_cmd = []
+		file_path = options.directory
+
+	cmd = base_cmd + ['php', file_path+'/initialize.php', 'silent']
+	subprocess.check_call(cmd)
