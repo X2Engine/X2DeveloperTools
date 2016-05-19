@@ -6,7 +6,7 @@ Date: 2016-05-11
 
 from __future__ import print_function
 
-import os, argparse, subprocess
+import os, argparse, subprocess, re
 
 def parse_arguments():
 	"""
@@ -62,17 +62,17 @@ def install_gitdir(options):
 	subprocess.check_call(cmd)
 
 	if options.installremote != 1:
-		cmd = ['sudo', 'chown', '-R', '33', options.directory+'/X2CRM/x2engine/']
+		cmd = ['sudo', 'chown', '-R', '33', options.directory+'/X2CRM/x2engine']
 		subprocess.check_call(cmd)
 	else:
-		cmd = ['ssh', options.remoteuser+'@'+options.remoteserver, 'sudo', 'chown', '-R', options.remoteuser+':'+options.remoteuser, options.remotewebroot+'/*']
+		cmd = ['ssh', options.remoteuser+'@'+options.remoteserver, 'sudo', 'chown', '-R', options.remoteuser+':'+options.remoteuser, options.remotewebroot]
 		subprocess.check_call(cmd)
 
 		cmd = ['rsync', '-avzcO', '--delete', options.directory+'/X2CRM/x2engine/', 
 			options.remoteuser+'@'+options.remoteserver+':'+options.remotewebroot]
 		subprocess.check_call(cmd)
 
-		cmd = ['ssh', options.remoteuser+'@'+options.remoteserver, 'sudo', 'chown', '-R', '33', options.remotewebroot+'/*']
+		cmd = ['ssh', options.remoteuser+'@'+options.remoteserver, 'sudo', 'chown', '-R', '33', options.remotewebroot]
 		subprocess.check_call(cmd)
 
 
@@ -116,39 +116,39 @@ def chset(options, flags = {}):
 	"""
 	flag_data = {
 		'd': {
-			'sedstr' : "s/YII_DEBUG',[:space:]*[a-zA-Z]\+/YII_DEBUG',{value}/",
+			'sedstr' : "s/YII_DEBUG',[:space:]*[a-zA-Z]+/YII_DEBUG',{value}/",
 			'file' : '/constants.php'
 		},
 		'D': {
-			'sedstr' : "s/X2_DEV_MODE',[:space:]*[a-zA-Z]\+/X2_DEV_MODE',{value}/",
+			'sedstr' : "s/X2_DEV_MODE',[:space:]*[a-zA-Z]+/X2_DEV_MODE',{value}/",
 			'file' : '/constants.php'
 		},
 		'u': {
-			'sedstr' : "s/YII_UNIT_TESTING',[:space:]*[a-zA-Z]\+/YII_UNIT_TESTING',{value}/",
+			'sedstr' : "s/YII_UNIT_TESTING',[:space:]*[a-zA-Z]+/YII_UNIT_TESTING',{value}/",
 			'file' : '/constants.php'
 		},
 		'v' : {
-			'sedstr' : "s/PRO_VERSION',[:space:]*[0-9]\+/PRO_VERSION',{value}/",
+			'sedstr' : "s/PRO_VERSION',[:space:]*[0-9]+/PRO_VERSION',{value}/",
 			'file' : '/constants.php'
 		},
 		't' : {
-			'sedstr' : "s/X2_TEST_DEBUG_LEVEL',[:space:]*[0-9]\+/X2_TEST_DEBUG_LEVEL',{value}/",
+			'sedstr' : "s/X2_TEST_DEBUG_LEVEL',[:space:]*[0-9]+/X2_TEST_DEBUG_LEVEL',{value}/",
 			'file' : '/protected/tests/testconstants.php'
 		},
 		'b' : {
-			'sedstr' : "s/BRANDING',[:space:]*[a-zA-Z]\+/BRANDING',{value}/",
+			'sedstr' : "s/BRANDING',[:space:]*[a-zA-Z]+/BRANDING',{value}/",
 			'file' : '/protected/partner/branding_constants-custom.php'
 		},
 		'f' : {
-			'sedstr' : "s/LOAD_FIXTURES',[:space:]*[a-zA-Z]\+/LOAD_FIXTURES',{value}/",
+			'sedstr' : "s/LOAD_FIXTURES',[:space:]*[a-zA-Z]+/LOAD_FIXTURES',{value}/",
 			'file' : '/protected/tests/testconstants.php'
 		},
 		'c' : {
-			'sedstr' : "s/LOAD_FIXTURES_FOR_CLASS_ONLY',[:space:]*[a-zA-Z]\+/LOAD_FIXTURES_FOR_CLASS_ONLY',{value}/",
+			'sedstr' : "s/LOAD_FIXTURES_FOR_CLASS_ONLY',[:space:]*[a-zA-Z]+/LOAD_FIXTURES_FOR_CLASS_ONLY',{value}/",
 			'file' : '/protected/tests/testconstants.php'
 		},
 		's' : {
-			'sedstr' : "s/X2_SKIP_ALL_TESTS',[:space:]*[a-zA-Z]\+/X2_SKIP_ALL_TESTS',{value}/",
+			'sedstr' : "s/X2_SKIP_ALL_TESTS',[:space:]*[a-zA-Z]+/X2_SKIP_ALL_TESTS',{value}/",
 			'file' : '/protected/tests/testconstants.php'
 		}
 	}
@@ -161,9 +161,68 @@ def chset(options, flags = {}):
 		base_cmd = []
 	for flag in flags:
 		sedstr = flag_data[flag]['sedstr'].replace('{value}',str(flags[flag]))
+		if options.installremote == 1:
+			sedstr = sedstr.replace("'","\\'")
 		file_path = install_path + flag_data[flag]['file']
-		cmd = base_cmd + ['sed', '-i', sedstr, file_path]
+		cmd = base_cmd + ['sed', '-i', '-r',  sedstr, file_path]
 		subprocess.check_call(cmd)
+
+def get_setting(options, flag):
+	"""
+	"""
+	flag_data = {
+		'd' : {
+			'regex' : "YII_DEBUG',\s*(\w+)",
+			'file' : '/constants.php',
+		},
+		'D' : {
+			'regex' : "X2_DEV_MODE',\s*(\w+)",
+			'file' : '/constants.php',
+		},
+		'u' : {
+			'regex' : "YII_UNIT_TESTING',\s*(\w+)",
+			'file' : '/constants.php'
+		},
+		'v' : {
+			'regex' : "PRO_VERSION',\s*(\d+)",
+			'file' : '/constants.php',
+		},
+		'b' : {
+			'regex' : "BRANDING',\s*(\w+)",
+			'file' : '/protected/partner/branding_constants-custom.php',
+		},
+		'f' : {
+			'regex' : "LOAD_FIXTURES',\s*(\w+)",
+			'file' : '/protected/tests/testconstants.php',
+		},
+		't' : {
+			'regex' : "X2_TEST_DEBUG_LEVEL',\s*(\d+)",
+			'file' : '/protected/tests/testconstants.php',
+		},
+		's' : {
+			'regex' : "SKIP_ALL_TESTS',\s*(\w+)",
+			'file' : '/protected/tests/testconstants.php'
+		},
+		'c' : {
+			'regex' : "LOAD_FIXTURES_FOR_CLASS_ONLY',\s*(\w+)",
+			'file' : '/protected/tests/testcontstants.php'
+		},
+	}
+
+	if options.installremote == 1:
+		base_cmd = ['ssh', options.remoteuser+'@'+options.remoteserver]
+		install_path = options.remotewebroot
+	else:
+		base_cmd = []
+		install_path = options.directory + '/X2CRM/x2engine'
+
+	cmd = base_cmd + ['cat', install_path + flag_data[flag]['file']]
+	ret = subprocess.check_output(cmd)
+
+	match = re.search(flag_data[flag]['regex'], ret)
+	if match:
+		return match.group(1)
+
 
 def initialize(options):
 	"""
@@ -177,3 +236,22 @@ def initialize(options):
 
 	cmd = base_cmd + ['php', file_path+'/initialize.php', 'silent']
 	subprocess.check_call(cmd)
+
+def rsync_live_to_gitdir(options):
+	"""
+	"""
+
+	old_u_val = get_setting(options, 'u')
+	old_D_val = get_setting(options, 'D')
+	
+	chset(options, {'u':'false', 'D': 'false'})
+
+	if options.installremote == 1:
+		file_path = options.remoteuser+'@'+options.remoteserver+':'+options.remotewebroot+'/'
+	else:
+		file_path = options.directory+'/X2CRM/x2engine/'
+
+	cmd = ['rsync', '-avczOn','--delete', '--exclude-from', '.rsync_exclude', file_path, options.gitdir+'/X2CRM/x2engine/']
+	subprocess.check_call(cmd)
+
+	chset(options, {'u': old_u_val, 'D': old_D_val})
