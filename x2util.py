@@ -251,7 +251,7 @@ def rsync_live_to_gitdir(options):
 	else:
 		file_path = options.directory+'/X2CRM/x2engine/'
 
-	cmd = ['rsync', '-avczOn','--delete', '--exclude-from', '.rsync_exclude', file_path, options.gitdir+'/X2CRM/x2engine/']
+	cmd = ['rsync', '-avczO','--delete', '--exclude-from', '.rsync_exclude', file_path, options.gitdir+'/X2CRM/x2engine/']
 	subprocess.check_call(cmd)
 
 	chset(options, {'u': old_u_val, 'D': old_D_val})
