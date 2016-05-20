@@ -1,7 +1,15 @@
 #!/usr/bin/env python2.7
 """
 Author: Jake Houser (jake@x2engine.com)
-Date: 2016-05-11
+Date: 2016-05-20
+This tool is intended to be used by developers working with X2CRM.
+Your bash profile must be properly set up (see README.md) or command
+line options must be provided to run this properly.
+Current commands are as follows:
+	setup - Makes a fresh copy of the filset and database and installs X2CRM
+	rsync - Copies files from your working directory back to your git directory for staging
+	reinstall - Refreshes the database and reinstalls X2CRM without changing the files
+	testing - Refresh the database and reinstalls X2CRM with config for unit testing
 """
 
 from __future__ import print_function
@@ -10,9 +18,13 @@ import sys, os, argparse, subprocess, re
 
 def parse_arguments():
 	"""
+	Argument parsing function handling all of the possible options that
+	can be provided. Options are generally either command line or bash
+	profile configured.
 	"""
 
-	parser = argparse.ArgumentParser()
+	parser = argparse.ArgumentParser(description = "A suite of tools for installing and manipulating X2CRM",
+		usage=__doc__)
 	
 	parser.add_argument('command', choices = ['setup', 'rsync', 'reinstall', 'testing'], help = "Command to be run, corresponding to a series of actions related to installing or manipulating X2CRM installations")
 
@@ -31,6 +43,7 @@ def parse_arguments():
 	args = parser.parse_args()
 	
 	if args.installremote == 1:
+		#These options are required if installing remotely
 		if args.remoteuser is None:
 			args.remoteuser = os.environ["REMOTEUSER"]
 		if args.remoteserver is None:
@@ -42,6 +55,10 @@ def parse_arguments():
 
 def refresh_database(options):
 	"""
+	Drop the existing database and create a new one for installation. This helps
+	prevent things like custom module tables piling up across installations,
+	but does mean that users will need permissions to drop and create their
+	own database.
 	"""
 	cmd = ['mysql', '-u', options.mysqluser, '-p"'+options.mysqlpass+'"', '-e', 
 		'"drop database if exists '+options.database+'; create database '+options.database+'"']
@@ -53,6 +70,8 @@ def refresh_database(options):
 
 def install_gitdir(options):
 	"""
+	Copy the files from the Git directory to the working directory and, if
+	remote installation is enabled, also to the remote server's web root.
 	"""
 	assetscmd = subprocess.Popen(['find', options.gitdir+'/X2CRM/x2engine/assets', '-maxdepth', '1', 
 		'-name', '[^t]*'], stdout=subprocess.PIPE)
@@ -80,6 +99,10 @@ def install_gitdir(options):
 
 def refresh_install_files(options):
 	"""
+	Copy the installation related files over to the working directory and, if
+	remote installation is enabled, also to the remote server's web root. Used
+	by the reload functions to allow a fresh installation without overwriting
+	changes to the fileset in the working directory or remote server.
 	"""
 	files = [
 		'/initialize.php',
@@ -110,6 +133,10 @@ def refresh_install_files(options):
 
 def prep_installation(options, testing=0):
 	"""
+	Set a variety of configuration values in the installConfig file
+	to allow for silent installation. The testing option specifies
+	that this installation should be configured for use with unit
+	testing.
 	"""
 
 	sedlist = [
@@ -138,6 +165,9 @@ def prep_installation(options, testing=0):
 
 def chset(options, flags = {}):
 	"""
+	Sets constants in the constants.php file in the X2CRM installation based
+	on the flags that have been provided. A full list of flags and which
+	constants they affect has been provided below.
 	Flag values:
 	d - Debug mode
 	D - X2Dev mode
@@ -204,6 +234,19 @@ def chset(options, flags = {}):
 
 def get_setting(options, flag):
 	"""
+	Gets the value of a constant from the constants.php file in an X2CRM
+	installation. A full list of flags and which constants they refer to
+	has been provided below.
+	Flag values:
+	d - Debug mode
+	D - X2Dev mode
+	u - Unit testing
+	v - Pro/pla edition
+	t - Test Debug level
+	b - Partner branding
+	f - Load fixtures for tests
+	c - Load fixtures for class only
+	s - Skip all unit tests
 	"""
 	flag_data = {
 		'd' : {
@@ -261,6 +304,7 @@ def get_setting(options, flag):
 
 def initialize(options):
 	"""
+	Performs a silent installation of X2CRM.
 	"""
 	if options.installremote == 1:
 		base_cmd = ['ssh', options.remoteuser+'@'+options.remoteserver]
@@ -274,6 +318,9 @@ def initialize(options):
 
 def rsync_live_to_gitdir(options):
 	"""
+	Copies changes from the working directory or remote server back to the Git
+	directory. Preserves changes to the flags set during installation or at
+	developer preference without affecting the repository files.
 	"""
 
 	old_u_val = get_setting(options, 'u')
@@ -295,6 +342,7 @@ def rsync_live_to_gitdir(options):
 
 def run_setup_full(options):
 	"""
+	Mapped to the "setup" command to perform a full installation of X2CRM.
 	"""
 
 	if options.refresh == 1:
@@ -306,13 +354,17 @@ def run_setup_full(options):
 
 def run_rsync_live_to_gitdir(options):
 	"""
+	Mapped to the "rsync" command to copy working files back to the Git repository.
 	"""
 
 	rsync_live_to_gitdir(options)
 
 def run_reinstall(options):
 	"""
+	Mapped to the "reinstall" command to reinstall X2CRM without changing the files
+	in the working directory or remote server.
 	"""
+
 	if options.refresh:
 		refresh_database(options)
 
@@ -323,7 +375,10 @@ def run_reinstall(options):
 
 def run_reinstall_for_testing(options):
 	"""
+	Mapped to the "testing" command to reinstall X2CRM and configure it for
+	being used for unit testing.
 	"""
+
 	if options.refresh:
 		refresh_database(options)
 
@@ -334,6 +389,8 @@ def run_reinstall_for_testing(options):
 
 def main(args):
 	"""
+	Main function which parses command line arguments and determines
+	which function to run based on provided commands
 	"""
 	commands = {
 		'setup' : run_setup_full,
