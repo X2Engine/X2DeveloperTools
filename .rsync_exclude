@@ -5,6 +5,8 @@ x2_credentials-local.php
 /protected/config/X2Config.php
 /protected/config/encryption.iv
 /protected/config/encryption.key
+/assets
+/protected/runtime
 /install.php
 /initialize.php
 /initialize_pro.php
