@@ -76,11 +76,11 @@ def install_gitdir(options):
 		subprocess.check_call(cmd)
 
 
-def prep_installation(options):
+def prep_installation(options, testing=0):
 	"""
 	"""
 
-	sedstr = ';'.join([
+	sedlist = [
 		"s/host = 'localhost/host = '127.0.0.1/",
 		"s/adminPassword = 'admin/adminPassword = '1/",
 		"s/db=''/db='"+options.database+"'/",
@@ -88,8 +88,11 @@ def prep_installation(options):
 		"s/pass=''/pass='"+options.mysqlpass+"'/",
 		"s/adminEmail = ''/adminEmail = '1\@1.com'/",
 		"s/dummyData = 0/dummyData = "+str(options.dummydata)+"/"
-	])
+	]
+	if testing == 1:
+		sedlist.append("s/test_db = 0/test_db = 1/")
 
+	sedstr = ';'.join(sedlist)
 
 	if options.installremote == 1:
 		basecmd = ['ssh', options.remoteuser+'@'+options.remoteserver]

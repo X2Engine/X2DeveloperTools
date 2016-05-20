@@ -16,10 +16,9 @@ def main(args):
 		x2util.refresh_database(options)
 	
 	x2util.install_gitdir(options)
-	x2util.prep_installation(options)
+	x2util.prep_installation(options, 1)
 	x2util.chset(options, {'D':'true'})
 	x2util.initialize(options)
-	x2util.rsync_live_to_gitdir(options)
 
 if __name__ == "__main__":
 	sys.exit(main(sys.argv))
