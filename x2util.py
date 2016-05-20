@@ -300,7 +300,6 @@ def run_setup_full(options):
 		refresh_database(options)
 	install_gitdir(options)
 	prep_installation(options, 0)
-	chset(options, {'D':'true'})
 	initialize(options)
 
 def run_rsync_live_to_gitdir(options):
@@ -317,7 +316,6 @@ def run_reinstall(options):
 
 	refresh_install_files(options)
 	prep_installation(options,0)
-	chset(options, {'D':'true'})
 	initialize(options)
 
 def run_reinstall_for_testing(options):
