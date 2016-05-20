@@ -6,7 +6,7 @@ Date: 2016-05-11
 
 from __future__ import print_function
 
-import os, argparse, subprocess, re
+import sys, os, argparse, subprocess, re
 
 def parse_arguments():
 	"""
@@ -14,6 +14,8 @@ def parse_arguments():
 
 	parser = argparse.ArgumentParser()
 	
+	parser.add_argument('command', choices = ['setup', 'rsync', 'reinstall', 'testing'], help = "Command to be run, corresponding to a series of actions related to installing or manipulating X2CRM installations")
+
 	parser.add_argument('-g', '--gitdir', default = os.environ["GITDIR"], help = 'Direcory of your X2CRM Git Repository')
 	parser.add_argument('-d', '--directory', default = os.environ["WORKINGDIR"], help = 'Directory of your working fileset for X2CRM')
 	parser.add_argument('-u', '--mysqluser', default = os.environ["MYSQLUSER"], help = 'User with the ability to drop/create their own database')
@@ -74,6 +76,36 @@ def install_gitdir(options):
 
 		cmd = ['ssh', options.remoteuser+'@'+options.remoteserver, 'sudo', 'chown', '-R', '33', options.remotewebroot]
 		subprocess.check_call(cmd)
+
+
+def refresh_install_files(options):
+	"""
+	"""
+	files = [
+		'/initialize.php',
+		'/initialize_pro.php',
+		'/install.php',
+		'/installConfig.php',
+		'/webConfig.php',
+	]
+
+	for file in files:
+		cmd = ['cp', options.gitdir+'/X2CRM/x2engine'+file, options.directory]
+		subprocess.check_call(cmd)
+
+	if options.installremote != 1:
+		cmd = ['sudo', 'chown', '-R', '33', options.directory+'/X2CRM/x2engine']
+		subprocess.check_call(cmd)
+	else:
+		cmd = ['ssh', options.remoteuser+'@'+options.remoteserver, 'sudo', 'chown', '-R', options.remoteuser+':'+options.remoteuser, options.remotewebroot]
+		subprocess.check_call(cmd)
+
+		for file in files:
+			cmd = ['rsync', '-avzcO', options.directory+'/X2CRM/x2engine'+file, options.remoteuser+'@'+options.remoteserver+':'+options.remotewebroot]
+			subprocess.check_call(cmd)
+
+        cmd = ['ssh', options.remoteuser+'@'+options.remoteserver, 'sudo', 'chown', '-R', '33', options.remotewebroot]
+        subprocess.check_call(cmd)
 
 
 def prep_installation(options, testing=0):
@@ -258,3 +290,59 @@ def rsync_live_to_gitdir(options):
 	subprocess.check_call(cmd)
 
 	chset(options, {'u': old_u_val, 'D': old_D_val})
+
+
+def run_setup_full(options):
+	"""
+	"""
+
+	if options.refresh == 1:
+		refresh_database(options)
+	install_gitdir(options)
+	prep_installation(options, 0)
+	chset(options, {'D':'true'})
+	initialize(options)
+
+def run_rsync_live_to_gitdir(options):
+	"""
+	"""
+
+	rsync_live_to_gitdir(options)
+
+def run_reinstall(options):
+	"""
+	"""
+	if options.refresh:
+		refresh_database(options)
+
+	refresh_install_files(options)
+	prep_installation(options,0)
+	chset(options, {'D':'true'})
+	initialize(options)
+
+def run_reinstall_for_testing(options):
+	"""
+	"""
+	if options.refresh:
+		refresh_database(options)
+
+	refresh_install_files(options)
+	prep_installation(options, 1)
+	chset(options, {'u':'true'})
+	initialize(options)
+
+def main(args):
+	"""
+	"""
+	commands = {
+		'setup' : run_setup_full,
+		'rsync' : run_rsync_live_to_gitdir,
+		'reinstall' : run_reinstall,
+		'testing' : run_reinstall_for_testing,
+	}
+	options = parse_arguments()
+	commands[options.command](options)
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))
+
