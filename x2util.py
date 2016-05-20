@@ -278,8 +278,9 @@ def rsync_live_to_gitdir(options):
 
 	old_u_val = get_setting(options, 'u')
 	old_D_val = get_setting(options, 'D')
+	old_d_val = get_setting(options, 'd')
 	
-	chset(options, {'u':'false', 'D': 'false'})
+	chset(options, {'u':'false', 'D': 'false', 'd':'false'})
 
 	if options.installremote == 1:
 		file_path = options.remoteuser+'@'+options.remoteserver+':'+options.remotewebroot+'/'
@@ -289,7 +290,7 @@ def rsync_live_to_gitdir(options):
 	cmd = ['rsync', '-avczO','--delete', '--exclude-from', '.rsync_exclude', file_path, options.gitdir+'/X2CRM/x2engine/']
 	subprocess.check_call(cmd)
 
-	chset(options, {'u': old_u_val, 'D': old_D_val})
+	chset(options, {'u': old_u_val, 'D': old_D_val, 'd': old_d_val})
 
 
 def run_setup_full(options):
@@ -299,6 +300,7 @@ def run_setup_full(options):
 	if options.refresh == 1:
 		refresh_database(options)
 	install_gitdir(options)
+	chset(options, {'d':'true'})
 	prep_installation(options, 0)
 	initialize(options)
 
@@ -315,6 +317,7 @@ def run_reinstall(options):
 		refresh_database(options)
 
 	refresh_install_files(options)
+	chset(options, {'d':'true'})
 	prep_installation(options,0)
 	initialize(options)
 
@@ -326,7 +329,7 @@ def run_reinstall_for_testing(options):
 
 	refresh_install_files(options)
 	prep_installation(options, 1)
-	chset(options, {'u':'true'})
+	chset(options, {'u':'true', 'd':'true'})
 	initialize(options)
 
 def main(args):
