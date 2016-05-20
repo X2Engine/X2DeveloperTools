@@ -1,0 +1,11 @@
+export GITDIR="$HOME/Code/X2Engine/repository"
+export WORKINGDIR="$HOME/Code/X2Engine/installation"
+export INSTALLEDDIR="$HOME/Code/X2Engine/installation"
+export MYSQLUSER="jake"
+export MYSQLPASS="password"
+export MYSQLDATABASE="jake"
+export INSTALLREMOTE=1
+export REMOTEUSER="jake"
+export REMOTESERVER="remoteserver.com"
+export REMOTEWEBROOT="public_html"
+
