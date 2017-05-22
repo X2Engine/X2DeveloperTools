@@ -28,7 +28,7 @@ def parse_arguments():
 	
 	parser.add_argument('command', choices = ['setup', 'rsync', 'reinstall', 'testing'], help = "Command to be run, corresponding to a series of actions related to installing or manipulating X2CRM installations")
 
-	parser.add_argument('-g', '--gitdir', default = os.environ["GITDIR"], help = 'Direcory of your X2CRM Git Repository')
+	parser.add_argument('-g', '--gitdir', default = os.environ["GITDIR"], help = 'Directory of your X2CRM Git Repository')
 	parser.add_argument('-d', '--directory', default = os.environ["WORKINGDIR"], help = 'Directory of your working fileset for X2CRM')
 	parser.add_argument('-u', '--mysqluser', default = os.environ["MYSQLUSER"], help = 'User with the ability to drop/create their own database')
 	parser.add_argument('-p', '--mysqlpass', default = os.environ["MYSQLPASS"], help = "Password corresponding to the provided MySQL user")
@@ -37,7 +37,7 @@ def parse_arguments():
 	parser.add_argument('-a', '--dummydata', type=int, default=1, help = 'Toggles including dummy data with the installation process')
 	parser.add_argument('-i', '--installremote', type=int, default=os.environ["INSTALLREMOTE"], help = "Toggles installation to a remote server")
 	parser.add_argument('-l', '--remoteuser', help = "Username to connect to the remote server with, only required with -i" )
-	parser.add_argument('-s', '--remoteserver', help = "Remote hostname to connect to, only required iwith -i")
+	parser.add_argument('-s', '--remoteserver', help = "Remote hostname to connect to, only required with -i")
 	parser.add_argument('-w', '--remotewebroot', help = "Remote webroot where X2CRM is being deployed to")
 
 	args = parser.parse_args()
@@ -60,11 +60,13 @@ def refresh_database(options):
 	but does mean that users will need permissions to drop and create their
 	own database.
 	"""
-	cmd = ['mysql', '-u', options.mysqluser, '-p"'+options.mysqlpass+'"', '-e', 
-		'"drop database if exists '+options.database+'; create database '+options.database+'"']
-
 	if options.installremote == 1:
+                cmd = ['mysql', '-u', options.mysqluser, '-p"'+options.mysqlpass+'"', '-e',
+                        'drop database if exists '+options.database+'; create database '+options.database+'']
 		cmd = ['ssh', options.remoteuser+'@'+options.remoteserver] + cmd
+        else:
+                cmd = ['mysql', '-u', options.mysqluser, '-p'+options.mysqlpass+'', '-e',
+                        'drop database if exists '+options.database+'; create database '+options.database+'']
 	
 	subprocess.check_call(cmd)
 
@@ -79,11 +81,11 @@ def install_gitdir(options):
 	rmcmd = subprocess.check_call(['xargs', '-r', 'rm', '-r'], stdin=tailcmd.stdout)
 	
 	print('deleting directory '+options.directory)
-	cmd = ['sudo', 'rsync', '-avc', '--delete', options.gitdir+'/', options.directory]
+	cmd = ['sudo', 'rsync', '-avc', '--delete', options.gitdir+'/X2CRM', options.directory]
 	subprocess.check_call(cmd)
 
 	if options.installremote != 1:
-		cmd = ['sudo', 'chown', '-R', '33', options.directory+'/X2CRM/x2engine']
+		cmd = ['sudo', 'chown', '-R', '33', options.directory]
 		subprocess.check_call(cmd)
 	else:
 		cmd = ['ssh', options.remoteuser+'@'+options.remoteserver, 'sudo', 'chown', '-R', options.remoteuser+':'+options.remoteuser, options.remotewebroot]
@@ -113,7 +115,7 @@ def refresh_install_files(options):
 	]
 
 	for file in files:
-		cmd = ['cp', options.gitdir+'/X2CRM/x2engine'+file, options.directory]
+		cmd = ['sudo', 'cp', options.gitdir+'/X2CRM/x2engine'+file, options.directory+'/X2CRM/x2engine/']
 		subprocess.check_call(cmd)
 
 	if options.installremote != 1:
@@ -127,8 +129,8 @@ def refresh_install_files(options):
 			cmd = ['rsync', '-avzcO', options.directory+'/X2CRM/x2engine'+file, options.remoteuser+'@'+options.remoteserver+':'+options.remotewebroot]
 			subprocess.check_call(cmd)
 
-        cmd = ['ssh', options.remoteuser+'@'+options.remoteserver, 'sudo', 'chown', '-R', '33', options.remotewebroot]
-        subprocess.check_call(cmd)
+                cmd = ['ssh', options.remoteuser+'@'+options.remoteserver, 'sudo', 'chown', '-R', '33', options.remotewebroot]
+                subprocess.check_call(cmd)
 
 
 def prep_installation(options, testing=0):
@@ -150,6 +152,15 @@ def prep_installation(options, testing=0):
 	]
 	if testing == 1:
 		sedlist.append("s/test_db = 0/test_db = 1/")
+                configfiles = ['phpunit_example.xml', 'WebTestConfig_example.php']
+                if options.installremote == 1:
+                        basecmd = []
+                else:
+                        basecmd = ['sudo']
+                for srcfile in configfiles:
+                        srcfile = options.directory + '/X2CRM/x2engine/protected/tests/' + srcfile
+                        dstfile = re.sub('_example', '', srcfile)
+                        subprocess.check_call(basecmd + ['cp', srcfile, dstfile])
 
 	sedstr = ';'.join(sedlist)
 
@@ -158,7 +169,7 @@ def prep_installation(options, testing=0):
 		sedstr = '"' + sedstr + '"'
 		filepath = options.remotewebroot+'/installConfig.php'
 	else:
-		basecmd = []
+		basecmd = ['sudo']
 		filepath = options.directory+'/X2CRM/x2engine/installConfig.php'
 	
 	subprocess.check_call(basecmd + ['sed', '-i', sedstr, filepath])
@@ -223,7 +234,7 @@ def chset(options, flags = {}):
 		base_cmd = ['ssh', options.remoteuser+'@'+options.remoteserver]
 	else:
 		install_path = options.directory+'/X2CRM/x2engine'
-		base_cmd = []
+		base_cmd = ['sudo']
 	for flag in flags:
 		sedstr = flag_data[flag]['sedstr'].replace('{value}',str(flags[flag]))
 		if options.installremote == 1:
@@ -310,8 +321,8 @@ def initialize(options):
 		base_cmd = ['ssh', options.remoteuser+'@'+options.remoteserver]
 		file_path = options.remotewebroot
 	else:
-		base_cmd = []
-		file_path = options.directory
+		base_cmd = ['sudo', '-u', '#33']
+		file_path = options.directory + '/X2CRM/x2engine'
 
 	cmd = base_cmd + ['php', file_path+'/initialize.php', 'silent']
 	subprocess.check_call(cmd)

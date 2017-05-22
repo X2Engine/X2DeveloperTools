@@ -1,1 +1,5 @@
 *.pyc
+*.sw[op]
+.vagrant
+/X2CRM
+/workdir
