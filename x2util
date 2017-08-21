@@ -2,14 +2,14 @@
 """
 Author: Jake Houser (jake@x2engine.com)
 Date: 2016-05-20
-This tool is intended to be used by developers working with X2CRM.
+This tool is intended to be used by developers working with X2Enterprise.
 Your bash profile must be properly set up (see README.md) or command
 line options must be provided to run this properly.
 Current commands are as follows:
-	setup - Makes a fresh copy of the filset and database and installs X2CRM
+	setup - Makes a fresh copy of the filset and database and installs X2Enterprise
 	rsync - Copies files from your working directory back to your git directory for staging
-	reinstall - Refreshes the database and reinstalls X2CRM without changing the files
-	testing - Refresh the database and reinstalls X2CRM with config for unit testing
+	reinstall - Refreshes the database and reinstalls X2Enterprise without changing the files
+	testing - Refresh the database and reinstalls X2Enterprise with config for unit testing
 """
 
 from __future__ import print_function
@@ -23,22 +23,22 @@ def parse_arguments():
 	profile configured.
 	"""
 
-	parser = argparse.ArgumentParser(description = "A suite of tools for installing and manipulating X2CRM",
+	parser = argparse.ArgumentParser(description = "A suite of tools for installing and manipulating X2Enterprise",
 		usage=__doc__)
 	
-	parser.add_argument('command', choices = ['setup', 'rsync', 'reinstall', 'testing'], help = "Command to be run, corresponding to a series of actions related to installing or manipulating X2CRM installations")
+	parser.add_argument('command', choices = ['setup', 'rsync', 'reinstall', 'testing'], help = "Command to be run, corresponding to a series of actions related to installing or manipulating X2Enterprise installations")
 
-	parser.add_argument('-g', '--gitdir', default = os.environ["GITDIR"], help = 'Direcory of your X2CRM Git Repository')
-	parser.add_argument('-d', '--directory', default = os.environ["WORKINGDIR"], help = 'Directory of your working fileset for X2CRM')
+	parser.add_argument('-g', '--gitdir', default = os.environ["GITDIR"], help = 'Direcory of your X2Enterprise Git Repository')
+	parser.add_argument('-d', '--directory', default = os.environ["WORKINGDIR"], help = 'Directory of your working fileset for X2Enterprise')
 	parser.add_argument('-u', '--mysqluser', default = os.environ["MYSQLUSER"], help = 'User with the ability to drop/create their own database')
 	parser.add_argument('-p', '--mysqlpass', default = os.environ["MYSQLPASS"], help = "Password corresponding to the provided MySQL user")
-	parser.add_argument('-m', '--database', default = os.environ["MYSQLDATABASE"], help = "Database name to use for installing X2CRM")
+	parser.add_argument('-m', '--database', default = os.environ["MYSQLDATABASE"], help = "Database name to use for installing X2Enterprise")
 	parser.add_argument('-r', '--refresh', type=int, default=1, help = 'Toggles refreshing the existing database')
 	parser.add_argument('-a', '--dummydata', type=int, default=1, help = 'Toggles including dummy data with the installation process')
 	parser.add_argument('-i', '--installremote', type=int, default=os.environ["INSTALLREMOTE"], help = "Toggles installation to a remote server")
 	parser.add_argument('-l', '--remoteuser', help = "Username to connect to the remote server with, only required with -i" )
 	parser.add_argument('-s', '--remoteserver', help = "Remote hostname to connect to, only required iwith -i")
-	parser.add_argument('-w', '--remotewebroot', help = "Remote webroot where X2CRM is being deployed to")
+	parser.add_argument('-w', '--remotewebroot', help = "Remote webroot where X2Enterprise is being deployed to")
 
 	args = parser.parse_args()
 	
@@ -73,7 +73,7 @@ def install_gitdir(options):
 	Copy the files from the Git directory to the working directory and, if
 	remote installation is enabled, also to the remote server's web root.
 	"""
-	assetscmd = subprocess.Popen(['find', options.gitdir+'/X2CRM/x2engine/assets', '-maxdepth', '1', 
+	assetscmd = subprocess.Popen(['find', options.gitdir+'/X2Enterprise/x2engine/assets', '-maxdepth', '1', 
 		'-name', '[^t]*'], stdout=subprocess.PIPE)
 	tailcmd = subprocess.Popen(['tail', '-n', '+2'], stdin=assetscmd.stdout, stdout=subprocess.PIPE)
 	rmcmd = subprocess.check_call(['xargs', '-r', 'rm', '-r'], stdin=tailcmd.stdout)
@@ -83,13 +83,13 @@ def install_gitdir(options):
 	subprocess.check_call(cmd)
 
 	if options.installremote != 1:
-		cmd = ['sudo', 'chown', '-R', '33', options.directory+'/X2CRM/x2engine']
+		cmd = ['sudo', 'chown', '-R', '33', options.directory+'/X2Enterprise/x2engine']
 		subprocess.check_call(cmd)
 	else:
 		cmd = ['ssh', options.remoteuser+'@'+options.remoteserver, 'sudo', 'chown', '-R', options.remoteuser+':'+options.remoteuser, options.remotewebroot]
 		subprocess.check_call(cmd)
 
-		cmd = ['rsync', '-avzcO', '--delete', options.directory+'/X2CRM/x2engine/', 
+		cmd = ['rsync', '-avzcO', '--delete', options.directory+'/X2Enterprise/x2engine/', 
 			options.remoteuser+'@'+options.remoteserver+':'+options.remotewebroot]
 		subprocess.check_call(cmd)
 
@@ -113,18 +113,18 @@ def refresh_install_files(options):
 	]
 
 	for file in files:
-		cmd = ['cp', options.gitdir+'/X2CRM/x2engine'+file, options.directory]
+		cmd = ['cp', options.gitdir+'/X2Enterprise/x2engine'+file, options.directory]
 		subprocess.check_call(cmd)
 
 	if options.installremote != 1:
-		cmd = ['sudo', 'chown', '-R', '33', options.directory+'/X2CRM/x2engine']
+		cmd = ['sudo', 'chown', '-R', '33', options.directory+'/X2Enterprise/x2engine']
 		subprocess.check_call(cmd)
 	else:
 		cmd = ['ssh', options.remoteuser+'@'+options.remoteserver, 'sudo', 'chown', '-R', options.remoteuser+':'+options.remoteuser, options.remotewebroot]
 		subprocess.check_call(cmd)
 
 		for file in files:
-			cmd = ['rsync', '-avzcO', options.directory+'/X2CRM/x2engine'+file, options.remoteuser+'@'+options.remoteserver+':'+options.remotewebroot]
+			cmd = ['rsync', '-avzcO', options.directory+'/X2Enterprise/x2engine'+file, options.remoteuser+'@'+options.remoteserver+':'+options.remotewebroot]
 			subprocess.check_call(cmd)
 
         cmd = ['ssh', options.remoteuser+'@'+options.remoteserver, 'sudo', 'chown', '-R', '33', options.remotewebroot]
@@ -159,13 +159,13 @@ def prep_installation(options, testing=0):
 		filepath = options.remotewebroot+'/installConfig.php'
 	else:
 		basecmd = []
-		filepath = options.directory+'/X2CRM/x2engine/installConfig.php'
+		filepath = options.directory+'/X2Enterprise/x2engine/installConfig.php'
 	
 	subprocess.check_call(basecmd + ['sed', '-i', sedstr, filepath])
 
 def chset(options, flags = {}):
 	"""
-	Sets constants in the constants.php file in the X2CRM installation based
+	Sets constants in the constants.php file in the X2Enterprise installation based
 	on the flags that have been provided. A full list of flags and which
 	constants they affect has been provided below.
 	Flag values:
@@ -222,7 +222,7 @@ def chset(options, flags = {}):
 		install_path = options.remotewebroot
 		base_cmd = ['ssh', options.remoteuser+'@'+options.remoteserver]
 	else:
-		install_path = options.directory+'/X2CRM/x2engine'
+		install_path = options.directory+'/X2Enterprise/x2engine'
 		base_cmd = []
 	for flag in flags:
 		sedstr = flag_data[flag]['sedstr'].replace('{value}',str(flags[flag]))
@@ -234,7 +234,7 @@ def chset(options, flags = {}):
 
 def get_setting(options, flag):
 	"""
-	Gets the value of a constant from the constants.php file in an X2CRM
+	Gets the value of a constant from the constants.php file in an X2Enterprise
 	installation. A full list of flags and which constants they refer to
 	has been provided below.
 	Flag values:
@@ -292,7 +292,7 @@ def get_setting(options, flag):
 		install_path = options.remotewebroot
 	else:
 		base_cmd = []
-		install_path = options.directory + '/X2CRM/x2engine'
+		install_path = options.directory + '/X2Enterprise/x2engine'
 
 	cmd = base_cmd + ['cat', install_path + flag_data[flag]['file']]
 	ret = subprocess.check_output(cmd)
@@ -304,7 +304,7 @@ def get_setting(options, flag):
 
 def initialize(options):
 	"""
-	Performs a silent installation of X2CRM.
+	Performs a silent installation of X2Enterprise.
 	"""
 	if options.installremote == 1:
 		base_cmd = ['ssh', options.remoteuser+'@'+options.remoteserver]
@@ -332,9 +332,9 @@ def rsync_live_to_gitdir(options):
 	if options.installremote == 1:
 		file_path = options.remoteuser+'@'+options.remoteserver+':'+options.remotewebroot+'/'
 	else:
-		file_path = options.directory+'/X2CRM/x2engine/'
+		file_path = options.directory+'/X2Enterprise/x2engine/'
 
-	cmd = ['rsync', '-avczO','--delete', '--exclude-from', os.path.dirname(sys.argv[0])+'/.x2util_rsync_exclude', file_path, options.gitdir+'/X2CRM/x2engine/']
+	cmd = ['rsync', '-avczO','--delete', '--exclude-from', os.path.dirname(sys.argv[0])+'/.x2util_rsync_exclude', file_path, options.gitdir+'/X2Enterprise/x2engine/']
 
 	subprocess.check_call(cmd)
 
@@ -343,7 +343,7 @@ def rsync_live_to_gitdir(options):
 
 def run_setup_full(options):
 	"""
-	Mapped to the "setup" command to perform a full installation of X2CRM.
+	Mapped to the "setup" command to perform a full installation of X2Enterprise.
 	"""
 
 	if options.refresh == 1:
@@ -362,7 +362,7 @@ def run_rsync_live_to_gitdir(options):
 
 def run_reinstall(options):
 	"""
-	Mapped to the "reinstall" command to reinstall X2CRM without changing the files
+	Mapped to the "reinstall" command to reinstall X2Enterprise without changing the files
 	in the working directory or remote server.
 	"""
 
@@ -376,7 +376,7 @@ def run_reinstall(options):
 
 def run_reinstall_for_testing(options):
 	"""
-	Mapped to the "testing" command to reinstall X2CRM and configure it for
+	Mapped to the "testing" command to reinstall X2Enterprise and configure it for
 	being used for unit testing.
 	"""
 
